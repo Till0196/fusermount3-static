@@ -32,6 +32,10 @@ jobs:
           else
             echo "version=${{ inputs.fuse_version }}" >>"$GITHUB_OUTPUT"
           fi
+          # GHCR requires lowercase repository names; the GitHub owner login
+          # is case-preserving, so we explicitly lowercase it here.
+          owner_lc="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "owner_lc=${owner_lc}" >>"$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -51,15 +55,15 @@ jobs:
           build-args: |
             FUSE_VERSION=${{ steps.resolve.outputs.version }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/fusermount3-static:${{ steps.resolve.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/fusermount3-static:latest
+            ghcr.io/${{ steps.resolve.outputs.owner_lc }}/fusermount3-static:${{ steps.resolve.outputs.version }}
+            ghcr.io/${{ steps.resolve.outputs.owner_lc }}/fusermount3-static:latest
           push: true
 
       - name: Extract per-arch binaries
         run: |
           set -euxo pipefail
           version="${{ steps.resolve.outputs.version }}"
-          image="ghcr.io/${{ github.repository_owner }}/fusermount3-static:${version}"
+          image="ghcr.io/${{ steps.resolve.outputs.owner_lc }}/fusermount3-static:${version}"
           mkdir -p dist
           for arch in amd64 arm64; do
             cid="$(docker create --platform "linux/${arch}" "${image}")"
