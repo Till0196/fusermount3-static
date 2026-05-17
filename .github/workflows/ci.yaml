@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - id: resolve
+        run: |
+          version="$(awk -F= '/^ARG FUSE_VERSION=/{print $2}' Dockerfile)"
+          echo "version=${version}" >>"$GITHUB_OUTPUT"
+
+      - name: Build amd64 (load + smoke test)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          build-args: |
+            FUSE_VERSION=${{ steps.resolve.outputs.version }}
+          tags: fusermount3-static:ci
+          load: true
+          push: false
+
+      - name: Smoke test
+        run: |
+          set -euxo pipefail
+          # 1. Default ENTRYPOINT prints the expected version.
+          out="$(docker run --rm fusermount3-static:ci)"
+          echo "${out}"
+          echo "${out}" | grep -q "fusermount3 version: ${{ steps.resolve.outputs.version }}"
+          # 2. Binary is fully static (no NEEDED, no INTERP).
+          cid="$(docker create fusermount3-static:ci)"
+          docker cp "${cid}:/fusermount3" /tmp/fm
+          docker rm "${cid}" >/dev/null
+          ! readelf -d /tmp/fm | grep -q NEEDED
+          ! readelf -l /tmp/fm | grep -q INTERP
+          # 3. setuid bit is preserved.
+          [ -u /tmp/fm ]
+          # 4. Compliance artifacts are present in the image.
+          docker run --rm --entrypoint cat fusermount3-static:ci /VERSION
+          docker run --rm --entrypoint cat fusermount3-static:ci /SOURCES.md >/dev/null
+          docker run --rm --entrypoint ls  fusermount3-static:ci /licenses
+
+      - name: Build arm64 (verify cross-compile)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          build-args: |
+            FUSE_VERSION=${{ steps.resolve.outputs.version }}
+          push: false

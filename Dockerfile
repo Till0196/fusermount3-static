@@ -1,6 +1,6 @@
 ARG FUSE_VERSION=3.18.2
 
-FROM alpine:3.21 AS builder
+FROM alpine:3.23 AS builder
 ARG FUSE_VERSION
 RUN apk add --no-cache build-base meson ninja pkgconf linux-headers curl tar
 WORKDIR /build
@@ -18,10 +18,19 @@ RUN set -eux; \
         -Duseroot=false \
         -Dc_link_args=-static; \
     ninja -C b util/fusermount3; \
-    install -d /out; \
-    install -m 4755 -o 0 -g 0 b/util/fusermount3 /out/fusermount3
+    install -d /out /out/licenses; \
+    install -m 4755 -o 0 -g 0 b/util/fusermount3 /out/fusermount3; \
+    # GPL-2.0 source-availability artifacts baked into the image.
+    cp -a LICENSES/. /out/licenses/ 2>/dev/null || true; \
+    for f in LICENSE LICENSE.md GPL2.txt LGPL2.txt COPYING; do \
+        [ -f "${f}" ] && cp "${f}" /out/licenses/ || true; \
+    done; \
+    printf '%s\n' "${FUSE_VERSION}" > /out/VERSION
 
 FROM busybox:1.37-musl
 COPY --from=builder /out/fusermount3 /fusermount3
+COPY --from=builder /out/licenses/ /licenses/
+COPY --from=builder /out/VERSION /VERSION
+COPY SOURCES.md /SOURCES.md
 ENTRYPOINT ["/fusermount3"]
 CMD ["--version"]

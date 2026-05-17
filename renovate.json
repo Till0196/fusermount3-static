@@ -1,0 +1,58 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions bumps into a single PR.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "description": "Group all libfuse-version bumps (Dockerfile + workflow + README) into one PR.",
+      "matchPackageNames": ["libfuse/libfuse"],
+      "groupName": "libfuse"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "dockerfile base images"
+    },
+    {
+      "description": "Auto-merge minor / patch / digest updates once CI passes. Major bumps still require human review because they may break the build or change behavior.",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "automergeStrategy": "squash",
+      "platformAutomerge": true
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Track libfuse releases across Dockerfile, the release workflow, and every hardcoded version reference in README.md.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Dockerfile$/",
+        "/^\\.github/workflows/release\\.ya?ml$/",
+        "/^README\\.md$/"
+      ],
+      "matchStrings": [
+        "ARG FUSE_VERSION=(?<currentValue>\\S+)",
+        "default:\\s*'(?<currentValue>[0-9][^']+)'\\s*#\\s*renovate:\\s*libfuse",
+        "fusermount3-static:(?<currentValue>[0-9][^\\s`'\"]+)",
+        "releases/download/v(?<currentValue>[0-9][^/]+)/",
+        "/fusermount3-(?<currentValue>[0-9][^-]+)-linux-",
+        "git tag v(?<currentValue>[0-9][^\\s`]+)",
+        "git push origin v(?<currentValue>[0-9][^\\s`]+)",
+        "fusermount3 version:\\s*(?<currentValue>[0-9][^\\s`]+)",
+        "e\\.g\\.\\s*`v(?<currentValue>[0-9][^`]+)`"
+      ],
+      "depNameTemplate": "libfuse/libfuse",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^fuse-(?<version>.+)$"
+    }
+  ]
+}
