@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      fuse_version:
+        description: 'libfuse version to build (e.g. 3.18.2)'
+        type: string
+        required: true
+        default: '3.18.2'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # create release + upload assets
+  packages: write   # push to GHCR
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            ref="${GITHUB_REF#refs/tags/v}"
+            echo "version=${ref}" >>"$GITHUB_OUTPUT"
+          else
+            echo "version=${{ inputs.fuse_version }}" >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            FUSE_VERSION=${{ steps.resolve.outputs.version }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/fusermount3-static:${{ steps.resolve.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/fusermount3-static:latest
+          push: true
+
+      - name: Extract per-arch binaries
+        run: |
+          set -euxo pipefail
+          version="${{ steps.resolve.outputs.version }}"
+          image="ghcr.io/${{ github.repository_owner }}/fusermount3-static:${version}"
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            cid="$(docker create --platform "linux/${arch}" "${image}")"
+            docker cp "${cid}:/fusermount3" "dist/fusermount3-${version}-linux-${arch}"
+            docker rm "${cid}" >/dev/null
+          done
+          cd dist
+          sha256sum * >SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create / update release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.resolve.outputs.version }}
+          files: |
+            dist/fusermount3-${{ steps.resolve.outputs.version }}-linux-amd64
+            dist/fusermount3-${{ steps.resolve.outputs.version }}-linux-arm64
+            dist/SHA256SUMS
+
+      - name: Upload artifacts (dispatch runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fusermount3-${{ steps.resolve.outputs.version }}
+          path: dist/
