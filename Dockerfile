@@ -27,7 +27,7 @@ RUN set -eux; \
     done; \
     printf '%s\n' "${FUSE_VERSION}" > /out/VERSION
 
-FROM busybox:1.37-musl
+FROM busybox:1.38-musl
 COPY --from=builder /out/fusermount3 /fusermount3
 COPY --from=builder /out/licenses/ /licenses/
 COPY --from=builder /out/VERSION /VERSION
