@@ -1,6 +1,6 @@
 ARG FUSE_VERSION=3.18.2
 
-FROM alpine:3.23 AS builder
+FROM alpine:3.24 AS builder
 ARG FUSE_VERSION
 RUN apk add --no-cache build-base meson ninja pkgconf linux-headers curl tar
 WORKDIR /build
