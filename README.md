@@ -21,7 +21,7 @@ Each release publishes:
 ### 1. Multi-stage Dockerfile (`COPY --from=`)
 
 ```dockerfile
-FROM ghcr.io/till0196/fusermount3-static:3.18.2 AS fm
+FROM ghcr.io/till0196/fusermount3-static:3.18.3 AS fm
 FROM your-base
 COPY --from=fm /fusermount3 /usr/bin/fusermount3
 RUN chmod 4755 /usr/bin/fusermount3
@@ -31,7 +31,7 @@ RUN chmod 4755 /usr/bin/fusermount3
 
 ```sh
 curl -fsSL -o /usr/local/bin/fusermount3 \
-  https://github.com/till0196/fusermount3-static/releases/download/v3.18.2/fusermount3-3.18.2-linux-amd64
+  https://github.com/till0196/fusermount3-static/releases/download/v3.18.3/fusermount3-3.18.3-linux-amd64
 echo "<sha256-from-SHA256SUMS>  /usr/local/bin/fusermount3" | sha256sum -c -
 chmod 4755 /usr/local/bin/fusermount3
 chown 0:0 /usr/local/bin/fusermount3
@@ -52,7 +52,7 @@ spec:
       hostPID: true
       containers:
         - name: install
-          image: ghcr.io/till0196/fusermount3-static:3.18.2
+          image: ghcr.io/till0196/fusermount3-static:3.18.3
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -87,7 +87,7 @@ $ readelf -l fusermount3 | grep INTERP || echo "(no INTERP)"
 (no INTERP)
 
 $ ./fusermount3 --version
-fusermount3 version: 3.18.2
+fusermount3 version: 3.18.3
 ```
 
 ## Licensing
@@ -118,11 +118,11 @@ See [`SOURCES.md`](./SOURCES.md) for the canonical compliance statement.
 
 ## Releasing
 
-Push a tag of the form `v<libfuse-version>` (e.g. `v3.18.2`) to trigger the release workflow, which builds the multi-arch image and uploads the raw binaries to the GitHub release.
+Push a tag of the form `v<libfuse-version>` (e.g. `v3.18.3`) to trigger the release workflow, which builds the multi-arch image and uploads the raw binaries to the GitHub release.
 
 ```sh
-git tag v3.18.2
-git push origin v3.18.2
+git tag v3.18.3
+git push origin v3.18.3
 ```
 
 For ad-hoc builds without releasing, use the workflow's `workflow_dispatch` trigger — binaries land in run artifacts and the image is still pushed to GHCR.
