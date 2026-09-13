@@ -7,7 +7,7 @@ on:
         description: 'libfuse version to build (e.g. 3.18.2)'
         type: string
         required: true
-        default: '3.18.2' # renovate: libfuse
+        default: '3.18.3' # renovate: libfuse
   push:
     tags:
       - 'v*'
